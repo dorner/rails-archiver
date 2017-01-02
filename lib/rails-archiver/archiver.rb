@@ -21,7 +21,7 @@ module RailsArchiver
     # @param model [ActiveRecord::Base] the model to archive or unarchive.
     # @param options [Hash]
     #   * logger [Logger]
-    #   * transport [Sybmol] :noop or :s3 right now
+    #   * transport [Sybmol] :in_memory or :s3 right now
     #   * delete_records [Boolean] whether or not we should delete existing
     #     records
     def initialize(model, options={})
