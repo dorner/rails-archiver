@@ -8,7 +8,7 @@ module RailsArchiver
         'some-key-here'
       end
 
-      def retrieve_archive
+      def retrieve_archive(location=nil)
         @options[:json]
       end
 

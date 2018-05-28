@@ -27,10 +27,13 @@ module RailsArchiver
     end
 
     # Unarchive a model.
-    def unarchive
+    # @param location [String] if given, uses the given location to unarchive.
+    # Otherwise uses the existing model in the database (e.g. attribute on the
+    # model) depending on the transport being used.
+    def unarchive(location=nil)
       @errors = []
       @logger.info('Downloading JSON file')
-      hash = @transport.retrieve_archive
+      hash = @transport.retrieve_archive(location)
       @logger.info("Loading #{@model.class.name}")
       load_classes(hash)
       @model.reload

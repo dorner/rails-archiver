@@ -1,8 +1,8 @@
 Gem::Specification.new do |s|
-  s.name = 'rails-archiver'
-  s.require_paths = %w[. lib lib/rails-archiver]
-  s.version      = '0.1.2'
-  s.date         = '2018-05-22'
+  s.name         = 'rails-archiver'
+  s.require_paths = %w(. lib lib/rails-archiver)
+  s.version      = '0.1.3'
+  s.date         = '2018-05-28'
   s.summary      = 'Fully archive a Rails model'
   s.description  = <<-EOF
   EOF
@@ -12,6 +12,7 @@ Gem::Specification.new do |s|
   s.homepage     = 'https://github.com/dorner/rails-archiver'
   s.license = 'MIT'
 
-  s.add_dependency 'aws-sdk', '>= 2.6'
   s.add_dependency 'rails', '>= 3.0'
+  s.add_development_dependency 'aws-sdk-s3', '~> 1.13'
+
 end

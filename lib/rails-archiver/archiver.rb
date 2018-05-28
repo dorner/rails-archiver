@@ -15,7 +15,7 @@ module RailsArchiver
       end
     end
 
-    attr_accessor :transport
+    attr_accessor :transport, :archive_location
 
     # Create a new Archiver with the given model.
     # @param model [ActiveRecord::Base] the model to archive or unarchive.
@@ -41,7 +41,7 @@ module RailsArchiver
       @hash = {}
       _visit_association(@model)
       @logger.info('Completed loading data')
-      @transport.store_archive(@hash)
+      @archive_location = @transport.store_archive(@hash)
       if @model.attribute_names.include?('archived')
         @model.update_attribute(:archived, true)
       end
@@ -148,8 +148,8 @@ module RailsArchiver
           new_nodes = node.send(assoc.name)
           next if new_nodes.blank?
 
-          if new_nodes.respond_to?(:each)
-            new_nodes.each { |n| _visit_association(n) }
+          if new_nodes.respond_to?(:find_each)
+            new_nodes.find_each { |n| _visit_association(n) }
           else
             _visit_association(new_nodes)
           end

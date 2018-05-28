@@ -1,5 +1,7 @@
 require 'aws-sdk'
 require 'securerandom'
+require 'tmpdir'
+
 # Transport that stores to S3. Uses an archived_s3_key attribute.
 module RailsArchiver
   module Transport
@@ -38,14 +40,26 @@ module RailsArchiver
           @logger.info("Uploading file to #{s3_key}")
           _save_archive_to_s3(s3_key, filename)
         end
+        if @model.respond_to?(:archived_s3_key)
+          @model.update_attribute(:archived_s3_key, s3_key)
+        end
         s3_key
-        @model.update_attribute(:archived_s3_key, s3_key)
       end
 
-      def retrieve_archive
+      # @param location [String]
+      def retrieve_archive(location=nil)
         Dir.mktmpdir do |dir|
-          filename = "#{dir}/#{@model.id}.json"
-          _get_archive_from_s3(@model.archived_s3_key, "#{filename}.gz")
+          s3_key = location
+          filename = nil
+          if @model
+            if @model.respond_to?(:archived_s3_key)
+              s3_key ||= @model.archived_s3_key
+            end
+            filename = "#{dir}/#{@model.id}.json"
+          else
+            filename = File.basename(s3_key)
+          end
+          _get_archive_from_s3(s3_key, "#{filename}.gz")
           @logger.info('Unzipping file')
           gunzip("#{filename}.gz")
           @logger.info('Parsing JSON')

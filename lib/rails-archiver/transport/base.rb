@@ -5,7 +5,8 @@ module RailsArchiver
     class Base
 
       # @param model [ActiveRecord::Base] the model we will be working with.
-      def initialize(model, logger=nil)
+      # @param logger [Logger]
+      def initialize(model=nil, logger=nil)
         @model = model
         @options = {}
         @logger = logger || ::Logger.new(STDOUT)
@@ -27,8 +28,11 @@ module RailsArchiver
 
       # To be implemented by subclasses. Retrieve the archive that was previously
       # created.
+      # @param location [String] if given, the location of the archive (e.g.
+      # S3 key). Otherwise will be figured out from the existing model
+      # in the database.
       # @return [Hash] the retrieved hash.
-      def retrieve_archive
+      def retrieve_archive(location=nil)
         raise NotImplementedError
       end
 
