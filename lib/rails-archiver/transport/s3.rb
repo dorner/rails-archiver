@@ -1,8 +1,7 @@
-require 'aws-sdk'
 require 'securerandom'
 require 'tmpdir'
 
-# Transport that stores to S3. Uses an archived_s3_key attribute.
+# Transport that stores to S3. Uses an archived_s3_key attribute if present.
 module RailsArchiver
   module Transport
     class S3 < Base
