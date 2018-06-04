@@ -32,15 +32,18 @@ module RailsArchiver
     # model) depending on the transport being used.
     def unarchive(location=nil)
       @errors = []
+      source = @model ? @model.class.name : location
       @logger.info('Downloading JSON file')
       hash = @transport.retrieve_archive(location)
-      @logger.info("Loading #{@model.class.name}")
+      @logger.info("Loading #{source}")
       load_classes(hash)
-      @model.reload
-      if @model.attribute_names.include?('archived')
-        @model.update_attribute(:archived, false)
+      if @model
+        @model.reload
+        if @model.attribute_names.include?('archived')
+          @model.update_attribute(:archived, false)
+        end
       end
-      @logger.info("#{@model.class.name} load complete!")
+      @logger.info("#{source} load complete!")
     end
 
     # Load a list of general classes that were saved as JSON.
@@ -98,18 +101,28 @@ module RailsArchiver
       model = klass.where(klass.primary_key => hash[klass.primary_key]).first
       if model.nil?
         model = klass.new
-        model.send(:attributes=, attrs, false)
+        _assign_attributes(model, attrs)
         # can't set this in the attribute hash, it'll be overridden. Need
         # to set it manually.
         model[klass.primary_key] = hash[klass.primary_key]
       else
-        model.send(:attributes=, attrs, false)
+        _assign_attributes(model, attrs)
       end
 
       model
     end
 
     private
+
+    # @param model [ActiveRecord::Base]
+    # @param attrs [Hash]
+    def _assign_attributes(model, attrs)
+      if model.method(:attributes=).arity == 1
+        model.attributes = attrs
+      else
+        model.send(:attributes=, attrs, false)
+      end
+    end
 
     def _get_transport(symbol_or_object)
       if symbol_or_object.is_a?(Symbol)

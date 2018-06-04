@@ -39,16 +39,52 @@ module RailsArchiver
     def archive
       @logger.info("Starting archive of #{@model.class.name} #{@model.id}")
       @hash = {}
-      _visit_association(@model)
+      visit_nodes(@model)
+      save_additional_data
       @logger.info('Completed loading data')
       @archive_location = @transport.store_archive(@hash)
       if @model.attribute_names.include?('archived')
         @model.update_attribute(:archived, true)
       end
-      @logger.info('Deleting rows')
-      _delete_records if @options[:delete_records]
-      @logger.info('All records deleted')
+      if @options[:delete_records]
+        @logger.info('Deleting rows')
+        _delete_records
+        @logger.info('All records deleted')
+      end
       @hash
+    end
+
+    # Use this method to add more data into the archive hash which isn't
+    # directly accessible from the parent model. Call `visit_nodes` on each
+    # set of data you want to add. To be overridden by subclasses.
+    def save_additional_data
+    end
+
+    # Used to visit an association, and recursively calls down to
+    # all child objects through all other allowed associations.
+    # @param node [ActiveRecord::Base|Array<ActiveRecord::Base>]
+    #    any object(s) that inherits from ActiveRecord::Base
+    def visit_nodes(node)
+      return if node.blank?
+      if node.respond_to?(:each) # e.g. a list of nodes from a has_many association
+        node.each { |n| visit_nodes(n) }
+      else
+        class_name = node.class.name
+        @hash[class_name] ||= Set.new
+        @hash[class_name] << visit(node)
+        get_associations(node).each do |assoc|
+          @logger.debug("Visiting #{assoc.name}")
+          new_nodes = node.send(assoc.name)
+          next if new_nodes.blank?
+
+          if new_nodes.respond_to?(:find_each)
+            new_nodes.find_each { |n| visit_nodes(n) }
+          else
+            visit_nodes(new_nodes)
+          end
+        end
+
+      end
     end
 
     # Returns a single object in the database represented as a hash.
@@ -92,6 +128,13 @@ module RailsArchiver
       @logger.info("Finished deleting from #{table}")
     end
 
+    # @return [RailsArchiver::Unarchiver]
+    def unarchiver
+      unarchiver = RailsArchiver::Unarchiver.new(@model, :logger => @logger)
+      unarchiver.transport = self.transport
+      unarchiver
+    end
+
     protected
 
     # Callback that runs after deletion is finished.
@@ -131,31 +174,5 @@ module RailsArchiver
       end
     end
 
-    # Used to visit an association, and recursively calls down to
-    # all child objects through all other allowed associations.
-    # @param node [ActiveRecord::Base|Array<ActiveRecord::Base>]
-    #    any object(s) that inherits from ActiveRecord::Base
-    def _visit_association(node)
-      return if node.blank?
-      if node.respond_to?(:each) # e.g. a list of nodes from a has_many association
-        node.each { |n| _visit_association(n) }
-      else
-        class_name = node.class.name
-        @hash[class_name] ||= Set.new
-        @hash[class_name] << visit(node)
-        get_associations(node).each do |assoc|
-          @logger.debug("Visiting #{assoc.name}")
-          new_nodes = node.send(assoc.name)
-          next if new_nodes.blank?
-
-          if new_nodes.respond_to?(:find_each)
-            new_nodes.find_each { |n| _visit_association(n) }
-          else
-            _visit_association(new_nodes)
-          end
-        end
-
-      end
-    end
   end
 end
