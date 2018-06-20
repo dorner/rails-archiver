@@ -29,7 +29,8 @@ module RailsArchiver
       def store_archive(hash)
         json = hash.to_json
         file_path = "#{@model.id}_#{SecureRandom.hex(8)}.json"
-        s3_key = "#{@options[:base_path]}/#{file_path}.gz"
+        base_path = @options[:base_path] ? "#{@options[:base_path]}/" : ''
+        s3_key = "#{base_path}#{file_path}.gz"
         Dir.mktmpdir do |dir|
           json_filename = "#{dir}/#{file_path}"
           @logger.info('Writing hash to JSON')
