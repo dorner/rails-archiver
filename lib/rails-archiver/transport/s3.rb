@@ -13,7 +13,7 @@ module RailsArchiver
 
       # Gzips the file, returns the gzipped filename
       def gzip(filename)
-        output = `gzip --force #{filename.shellescape} 2>&1`
+        output = `gzip #{filename.shellescape} 2>&1`
 
         raise output if $?.exitstatus != 0
 
