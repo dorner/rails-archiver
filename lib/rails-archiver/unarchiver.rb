@@ -40,7 +40,7 @@ module RailsArchiver
       if @model
         @model.reload
         if @model.attribute_names.include?('archived')
-          @model.update_attribute(:archived, false)
+          @model.class.where(id: @model.id).update_all(:archived => false)
         end
       end
       @logger.info("#{source} load complete!")
@@ -51,7 +51,11 @@ module RailsArchiver
     def load_classes(hash)
       full_hash = hash.with_indifferent_access
       full_hash.each do |key, vals|
-        save_models(key.constantize, vals)
+        begin
+          save_models(key.constantize, vals)
+        rescue NameError => e
+          @logger.error("Could not save models for #{key}: #{e.message}")
+        end
       end
       if @options[:crash_on_errors] && self.errors.any?
         raise ImportError.new("Errors occurred during load - please see 'errors' method for more details")
