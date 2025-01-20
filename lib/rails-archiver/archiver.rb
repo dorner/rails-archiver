@@ -128,9 +128,18 @@ module RailsArchiver
       @logger.info("Finished deleting from #{table}")
     end
 
+    # @return [Class]
+    def unarchiver_class
+      RailsArchiver::Unarchiver
+    end
+
     # @return [RailsArchiver::Unarchiver]
-    def unarchiver
-      unarchiver = RailsArchiver::Unarchiver.new(@model, :logger => @logger)
+    # @param crash_on_errors [Boolean]
+    def unarchiver(crash_on_errors: false)
+      unarchiver = unarchiver_class.new(@model,
+                                        logger: @logger,
+                                        crash_on_errors: crash_on_errors
+      )
       unarchiver.transport = self.transport
       unarchiver
     end

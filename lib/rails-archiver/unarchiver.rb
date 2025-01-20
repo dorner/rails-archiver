@@ -11,18 +11,24 @@ module RailsArchiver
     attr_accessor :errors, :transport
 
     # @param model [ActiveRecord::Base]
-    # @param options [Hash]
-    #   * logger [Logger]
-    #   * new_copy [Boolean] if true, create all new objects instead of
-    #                        replacing existing ones.
-    #   * crash_on_errors [Boolean] if true, do not do any imports if any
-    #                               models' validations failed.
-    def initialize(model, options={})
+    # @param logger [Logger]
+    # @param new_copy [Boolean] if true, create all new objects instead of
+    #                           replacing existing ones.
+    # @param crash_on_errors [Boolean] if true, do not do any imports if any
+    #                           models' validations failed.
+    # @param transport [Symbol|RailsArchiver::Transport::Base]
+    def initialize(model,
+                   transport: :in_memory,
+                   logger: Logger.new(STDOUT),
+                   new_copy: false, crash_on_errors: false)
       @model = model
-      @logger = options.delete(:logger) || Logger.new(STDOUT)
-      @options = options
+      @logger = logger
+      @options = {
+        new_copy: new_copy,
+        crash_on_errors: crash_on_errors
+      }
       # Transport for downloading
-      self.transport = _get_transport(options.delete(:transport) || :in_memory)
+      self.transport = _get_transport(transport)
       self.errors = []
     end
 
@@ -58,7 +64,7 @@ module RailsArchiver
         end
       end
       if @options[:crash_on_errors] && self.errors.any?
-        raise ImportError.new("Errors occurred during load - please see 'errors' method for more details")
+        raise ImportError.new("Errors occurred during load: #{self.errors.join("\n")}")
       end
     end
 
@@ -114,13 +120,52 @@ module RailsArchiver
       end
 
       model
+    rescue => e
+      self.errors << "Error importing class #{klass.name}: #{e.message}"
     end
 
     private
 
     # @param model [ActiveRecord::Base]
+    # @param field [String]
+    # @param attrs [Hash]
+    def assign_enum_value(model, field, attrs)
+      entries = model.class.public_send(field.pluralize)
+      is_integer = entries.values.first.is_a?(Integer)
+      value = attrs[field]
+      valid = if entries.keys.include?(value)
+                true
+              elsif is_integer && entries.values.include?(value.to_i)
+                true
+              else
+                entries.values.include?(value)
+              end
+
+      return if valid
+
+      @logger.warn("Invalid value for #{field}: #{attrs[field]}")
+      new_value = model.class.columns.find { |a| a.name == field }.default
+      new_value = new_value.to_i if is_integer && new_value
+      attrs[field] = new_value
+    end
+
+    # @param model [ActiveRecord::Base]
     # @param attrs [Hash]
     def _assign_attributes(model, attrs)
+      # Handle integer enum values that were turned into strings
+      if model.class.respond_to?(:attribute_types)
+        enums = model.class.attribute_types.select { |_, v| v.is_a?(ActiveRecord::Enum::EnumType) }
+        enums.keys.each do |field|
+          assign_enum_value(model, field, attrs)
+        end
+      end
+      model.class.reflect_on_all_associations(:belongs_to).each do |assoc|
+        if attrs[assoc.foreign_key].present?
+          record = assoc.klass.find_by(assoc.association_primary_key => attrs[assoc.foreign_key])
+          attrs[assoc.name] = record if record
+        end
+      end
+
       if model.method(:attributes=).arity == 1
         model.attributes = attrs
       else
