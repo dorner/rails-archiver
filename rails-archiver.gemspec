@@ -1,8 +1,8 @@
 Gem::Specification.new do |s|
   s.name         = 'rails-archiver'
   s.require_paths = %w(. lib lib/rails-archiver)
-  s.version      = '0.1.8'
-  s.date         = '2024-07-03'
+  s.version      = '0.2.0'
+  s.date         = '2025-01-20'
   s.summary      = 'Fully archive a Rails model'
   s.description  = <<-EOF
   EOF
