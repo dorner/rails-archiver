@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## UNRELEASED
 
+# [0.3.0] - 2025-05-22
+- Added retries for delete table operations to handle SQL Timeouts and deadlocks.
+
 # [0.2.0] - 2025-01-20
 - Added support for enum columns - should be able to handle both keys and values.
 - Refactored the `unarchiver` method to more easily subclass `Unarchiver`.

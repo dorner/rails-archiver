@@ -1,4 +1,5 @@
 require 'tmpdir'
+require 'rails-archiver/utils/deadlock_retry'
 # Takes a database model and:
 # 1) Visits all dependent associations
 # 2) Saves everything in one giant JSON hash
@@ -122,7 +123,9 @@ module RailsArchiver
         delete_query = <<-SQL
           DELETE FROM `#{table}` WHERE `id` IN (#{group.compact.join(',')})
         SQL
-        ActiveRecord::Base.connection.delete(delete_query)
+        RailsArchiver::Utils::DeadlockRetry.wrap do
+          ActiveRecord::Base.connection.delete(delete_query)
+        end
       end
 
       @logger.info("Finished deleting from #{table}")
